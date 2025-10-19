@@ -38,102 +38,95 @@ from adafruit_mcp9808 import MCP9808
 from adafruit_rfm9x import RFM9x
 
 
-# -------------------------------------------------------------------
+# ------------------------------------------------------------------------
 # Config Options for LoRa FeatherWing (see learn guide and API docs)
-# -------------------------------------------------------------------
-BAUD        = const(1000000)   # SPI baudrate (1 MHz)
+# ------------------------------------------------------------------------
+BAUD        = const(1000000)   # SPI baudrate (1 MHz, default 10MHz)
 LORA_BAND   = const(915)       # LoRa band (915 MHz for US)
-TX_POW      = const(5)         # LoRa transmit power (range 5..23 dB)
+TX_POW      = const(8)         # LoRa TX power (range 5..23 dB, default 13)
+SF          = const(9)         # Spreading factor (range 6..12, default 7)
+CODING_RATE = const(5)         # Coding rate (range 5..8, default 5)
 DESTINATION = const(255)       # Send to all stations (nodes)
 NODE        = const(255)       # Receive from all stations (nodes)
-RX_TIMEOUT  = const(5)         # timeout (unit is seconds)
-# -------------------------------------------------------------------
+# ------------------------------------------------------------------------
+
+
+def rfm9x_factory(spi, cs, rst):
+    """Configure an RFM9x object for the 900 MHz RFM95W LoRa FeatherWing"""
+    r = RFM9x(spi, cs, rst, LORA_BAND, baudrate=BAUD)
+    r.tx_power = TX_POW
+    r.spreading_factor = SF
+    r.coding_rate = CODING_RATE
+    r.destination = DESTINATION
+    r.node = NODE
+    return r
 
 
 class Remote:
-    """Code for the remote sensor hardware configuration (LoRa TX)"""
+    """Controller class for remote sensor hardware configuration (LoRa TX)"""
 
-    def __init__(self, max17, mcp98, rfm95):
-        # args: max17: MAX17048, mcp98: MCP9808, rfm95: RFM9x
-        self.max17 = max17
-        self.mcp98 = mcp98
-        self.rfm95 = rfm95
-        rfm95.tx_power = TX_POW
-        rfm95.destination = DESTINATION
-        rfm95.node = NODE
+    def __init__(self, i2c, spi, cs, rst):
+        # CAUTION: Older versions of the ESP32-S3 Feather used a different I2C
+        # fuel gauge chip. This code is for current board revision.
+        self.max17 = MAX17048(i2c)                # Built in battery fuel gauge
+        self.mcp98 = MCP9808(i2c)                 # External temperature sensor
+        self.rfm95 = rfm9x_factory(spi, cs, rst)  # LoRa FeatherWing
 
-    def volts(self):
-        # Check battery voltage
+    def centivolts(self):
+        # Return battery voltage as centivolts integer (hundredths of a Volt).
+        # The point of cV units is to encode as an integer instead of a float.
         self.max17.wake()
         time.sleep(0.1)
-        return max17.cell_voltage
+        return round(self.max17.cell_voltage * 100)
 
     def deg_F(self):
-        # Check temperature, converting from Celsius to Fahrenheit
-        C = self.mcp98.temperature
-        F = (C * 9 / 5) + 32
-        return F
+        # Return temperature as Fahrenheit integer (converted from Celsius)
+        return round((self.mcp98.temperature * 9 / 5) + 32)
 
     def run(self):
         # Read sensors and transmit measurements
         while True:
-            msg = '%.2f,%.1f' % (self.volts(), self.deg_F())
+            msg = '%d,%d' % (self.centivolts(), self.deg_F())
             print('TX:', msg)
-            ok = self.rfm95.send(msg, destination=255)
-            if not ok:
+            if err := not self.rfm95.send(msg, destination=255):
                 print('TX failed')
             time.sleep(5)
 
 
 class BaseStation:
-    """Code for the base station hardware configuration (LoRa RX)"""
+    """Controller class for base station hardware configuration (LoRa RX)"""
 
-    def __init__(self, rfm95):
-        # args: rfm95: RFM9x
-        self.rfm95 = rfm95
-        rfm95.tx_power = TX_POW
-        rfm95.destination = DESTINATION
-        rfm95.node = NODE
+    def __init__(self, spi, cs, rst):
+        self.rfm95 = rfm9x_factory(spi, cs, rst)  # LoRa FeatherWing
 
     def run(self):
-        # Test sensors and radio RX
-        # TODO: implement base station RX and switch this to TX
-        print('LoRa RX...')
+        # Receive measurements
+        print('LoRa RX Started.')
+        lora = self.rfm95
         while True:
-            packet = self.rfm95.receive()
-            if packet:
-                print('RSSI dB: %d, %s' % (self.rfm95.last_rssi, packet))
+            if packet := lora.receive():
+                rssi = lora.last_rssi
+                snr = lora.last_snr
+                msg = bytes(packet)
+                print('rssi: %d, snr: %.1f, %s' % (rssi, snr, msg))
 
 
-# ---------------------------------------------------------------------------
-# Initialize hardware based on board_id:
-# - ESP32-S3 Feather: remote sensor
-# - RP2350 Feather: base station
-#
-# If you want to use different Feather boards, add a new section here for
-# your board's board_id (double check LoRa pinout compatibility first!)
-# --------------------------------------------------------------------------
-#
+# ------------------------------------------
+# At boot: Select mode according to board_id
+# ------------------------------------------
+
 if board.board_id == 'adafruit_feather_esp32s3_nopsram':
-    # Initialize hardware as remote sensor
+    # Remote Sensor Mode
     i2c = board.STEMMA_I2C()
     spi = board.SPI()
-    max17 = MAX17048(i2c)                   # Built in I2C battery fuel gauge
-    mcp98 = MCP9808(i2c)                    # External I2C temperature sensor
     cs = DigitalInOut(board.D10)
     rst = DigitalInOut(board.D9)
-    rfm95 = RFM9x(spi, cs, rst, LORA_BAND, baudrate=BAUD)  # LoRa FeatherWing
-    remote = Remote(max17, mcp98, rfm95)
-    # Send measurements
-    remote.run()
+    Remote(i2c, spi, cs, rst).run()
 elif board.board_id == 'adafruit_feather_rp2350':
-    # Initialize hardware as base station
+    # Base Station Mode
     spi = board.SPI()
     cs = DigitalInOut(board.D10)
     rst = DigitalInOut(board.D9)
-    rfm95 = RFM9x(spi, cs, rst, LORA_BAND, baudrate=BAUD)  # LoRa FeatherWing
-    base = BaseStation(rfm95)
-    # Receive measurements
-    base.run()
+    BaseStation(spi, cs, rst).run()
 else:
-    raise Error("Unexpected board_id. Halting. (check code.py comments)")
+    raise ValueError("Unexpected board_id. Halting. (check code.py comments)")
