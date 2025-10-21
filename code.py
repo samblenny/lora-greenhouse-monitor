@@ -97,25 +97,16 @@ class Remote:
         self.mcp98 = MCP9808(i2c)                 # External temperature sensor
         self.rfm95 = rfm9x_factory(spi, cs, rst)  # LoRa FeatherWing
 
-    def volts(self):
-        # Return battery volts.
-        self.max17.wake()
-        time.sleep(0.1)
-        return self.max17.cell_voltage
-
-    def deg_F(self):
-        # Return temperature in Fahrenheit (converted from Celsius)
-        return (self.mcp98.temperature * 9 / 5) + 32
-
     def run(self):
         # Read sensors and transmit measurements
         while True:
-            v = self.volts()
-            f = self.deg_F()
-            msg = encode_msg(v, f)
-            print('TX: %.2f, %.1f' % (v, f))
-            if err := not self.rfm95.send(msg, destination=255):
-                print('TX failed')
+            volts = self.max17.cell_voltage
+            degrees_F = (self.mcp98.temperature * 9 / 5) + 32  # convert C->F
+            print('TX: %.2f, %.1f' % (volts, degrees_F))
+            msg = encode_msg(volts, degrees_F)
+            self.rfm95.send(msg, destination=255)  # start transmitting packet
+            time.sleep(0.005)                      # wait for packet to finish
+            self.rfm95.idle()                      # enter low power mode
             time.sleep(5)
 
 
@@ -128,8 +119,8 @@ class BaseStation:
     def handle_packet(self, rssi, snr, msg):
         print('RX: rssi:%d, snr:%.1f, ' % (rssi, snr), end='')
         if len(msg) == 2:
-            v, f = decode_msg(msg)
-            print('%.2f, %.0f' % (v, f))
+            volts, degrees_F = decode_msg(msg)
+            print('%.2f, %.0f' % (volts, degrees_F))
         else:
             print(msg)
 
