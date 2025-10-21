@@ -43,7 +43,7 @@ from adafruit_rfm9x import RFM9x
 # ------------------------------------------------------------------------
 BAUD        = const(1000000)   # SPI baudrate (1 MHz, default 10MHz)
 LORA_BAND   = const(915)       # LoRa band (915 MHz for US)
-TX_POW      = const(8)         # LoRa TX power (range 5..23 dB, default 13)
+TX_POW      = const(5)         # LoRa TX power (range 5..23 dB, default 13)
 SF          = const(9)         # Spreading factor (range 6..12, default 7)
 CODING_RATE = const(5)         # Coding rate (range 5..8, default 5)
 DESTINATION = const(255)       # Send to all stations (nodes)
@@ -61,7 +61,7 @@ TEMP_HI = const(127)
 
 
 def rfm9x_factory(spi, cs, rst):
-    """Configure an RFM9x object for the 900 MHz RFM95W LoRa FeatherWing"""
+    # Configure an RFM9x object for the 900 MHz RFM95W LoRa FeatherWing.
     r = RFM9x(spi, cs, rst, LORA_BAND, baudrate=BAUD)
     r.tx_power = TX_POW
     r.spreading_factor = SF
@@ -71,25 +71,27 @@ def rfm9x_factory(spi, cs, rst):
     return r
 
 def scale_to_byte(val, lo, hi):
+    # Scale and convert float in range lo..hi to integer in range 0..255
     return min(255, max(0, round(255 * (val - lo) / (hi - lo))))
 
 def scale_from_byte(b, lo, hi):
+    # Scale and convert integer in range 0..255 to float in range lo..hi
     return (b * (hi - lo) / 255) + lo
 
 def encode_(volt, degree_F):
+    # Compress float measurements into a compact bytes value
     v = scale_to_byte(volt, BATT_LO, BATT_HI)
     t = scale_to_byte(degree_F, TEMP_LO, TEMP_HI)
     return bytes((v, t))
 
 def decode_(data):
+    # Expand bytes into float measurements with correct range
     v = scale_from_byte(data[0], BATT_LO, BATT_HI)
     t = scale_from_byte(data[1], TEMP_LO, TEMP_HI)
     return v, t
 
 def start_tx_mode(i2c, spi, cs, rst):
-    """
-    Initialize and run in remote sensor hardware configuration (LoRa TX)
-    """
+    # Initialize and run in remote sensor hardware configuration (LoRa TX)
     max17 = MAX17048(i2c)                  # battery fuel gauge
     mcp98 = MCP9808(i2c)                   # temperature sensor
     rfm95 = rfm9x_factory(spi, cs, rst)    # LoRa radio
@@ -105,9 +107,7 @@ def start_tx_mode(i2c, spi, cs, rst):
         time.sleep(5)
 
 def start_rx_mode(spi, cs, rst):
-    """
-    Initialize and run in base station hardware configuration (LoRa RX)
-    """
+    # Initialize and run in base station hardware configuration (LoRa RX)
     EXPECTED_SIZE = const(2)
     rfm95 = rfm9x_factory(spi, cs, rst)        # LoRa radio
     print('Starting LoRa Receiver.')
@@ -126,6 +126,7 @@ def start_rx_mode(spi, cs, rst):
 # At boot, select mode according to board_id:
 # -------------------------------------------
 
+time.sleep(0.01)  # SX127x radio needs 10ms after reset
 if board.board_id == 'adafruit_feather_esp32s3_nopsram':
     # Remote Sensor (TX)
     i2c = board.STEMMA_I2C()
