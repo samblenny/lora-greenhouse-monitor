@@ -53,8 +53,8 @@ NODE        = const(255)       # Receive from all stations (nodes)
 # ------------------------------------------------
 # Sensor Range Limits (for encoding LoRa messages)
 # ------------------------------------------------
-BATT_LO = const(3.1)
-BATT_HI = const(4.3)
+BATT_LO = const(3.2)
+BATT_HI = const(4.2)
 TEMP_LO = const(-128)
 TEMP_HI = const(127)
 # ------------------------------------------------
@@ -113,7 +113,7 @@ class Remote:
             v = self.volts()
             f = self.deg_F()
             msg = encode_msg(v, f)
-            print('TX: %.2f, %.1f, %s' % (v, f, msg))
+            print('TX: %.2f, %.1f' % (v, f))
             if err := not self.rfm95.send(msg, destination=255):
                 print('TX failed')
             time.sleep(5)
@@ -125,20 +125,22 @@ class BaseStation:
     def __init__(self, spi, cs, rst):
         self.rfm95 = rfm9x_factory(spi, cs, rst)  # LoRa FeatherWing
 
+    def handle_packet(self, rssi, snr, msg):
+        print('RX: rssi:%d, snr:%.1f, ' % (rssi, snr), end='')
+        if len(msg) == 2:
+            v, f = decode_msg(msg)
+            print('%.2f, %.0f' % (v, f))
+        else:
+            print(msg)
+
     def run(self):
-        # Receive measurements
-        print('LoRa RX Started.')
+        # Receive, decode, and print measurements
+        print('Starting LoRa Receiver.')
         lora = self.rfm95
         while True:
             if packet := lora.receive():
-                rssi = lora.last_rssi
-                snr = lora.last_snr
                 msg = bytes(packet)
-                if len(msg) == 2:
-                    v, f = decode_msg(msg)
-                    print('rssi:%d, snr:%.1f, %.2f, %.1f' % (rssi, snr, v, f))
-                else:
-                    print('rssi:%d, snr:%.1f, %s' % (rssi, snr, msg))
+                self.handle_packet(lora.last_rssi, lora.last_snr, msg)
 
 
 # ------------------------------------------
