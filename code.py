@@ -50,6 +50,15 @@ DESTINATION = const(255)       # Send to all stations (nodes)
 NODE        = const(255)       # Receive from all stations (nodes)
 # ------------------------------------------------------------------------
 
+# ------------------------------------------------
+# Sensor Range Limits (for encoding LoRa messages)
+# ------------------------------------------------
+BATT_LO = const(3.1)
+BATT_HI = const(4.3)
+TEMP_LO = const(-128)
+TEMP_HI = const(127)
+# ------------------------------------------------
+
 
 def rfm9x_factory(spi, cs, rst):
     """Configure an RFM9x object for the 900 MHz RFM95W LoRa FeatherWing"""
@@ -60,6 +69,22 @@ def rfm9x_factory(spi, cs, rst):
     r.destination = DESTINATION
     r.node = NODE
     return r
+
+def scale_to_byte(val, lo, hi):
+    return min(255, max(0, round(255 * (val - lo) / (hi - lo))))
+
+def scale_from_byte(b, lo, hi):
+    return (b * (hi - lo) / 255) + lo
+
+def encode_msg(volt, degree_F):
+    v = scale_to_byte(volt, BATT_LO, BATT_HI)
+    t = scale_to_byte(degree_F, TEMP_LO, TEMP_HI)
+    return bytes((v, t))
+
+def decode_msg(data):
+    v = scale_from_byte(data[0], BATT_LO, BATT_HI)
+    t = scale_from_byte(data[1], TEMP_LO, TEMP_HI)
+    return v, t
 
 
 class Remote:
@@ -72,22 +97,23 @@ class Remote:
         self.mcp98 = MCP9808(i2c)                 # External temperature sensor
         self.rfm95 = rfm9x_factory(spi, cs, rst)  # LoRa FeatherWing
 
-    def centivolts(self):
-        # Return battery voltage as centivolts integer (hundredths of a Volt).
-        # The point of cV units is to encode as an integer instead of a float.
+    def volts(self):
+        # Return battery volts.
         self.max17.wake()
         time.sleep(0.1)
-        return round(self.max17.cell_voltage * 100)
+        return self.max17.cell_voltage
 
     def deg_F(self):
-        # Return temperature as Fahrenheit integer (converted from Celsius)
-        return round((self.mcp98.temperature * 9 / 5) + 32)
+        # Return temperature in Fahrenheit (converted from Celsius)
+        return (self.mcp98.temperature * 9 / 5) + 32
 
     def run(self):
         # Read sensors and transmit measurements
         while True:
-            msg = '%d,%d' % (self.centivolts(), self.deg_F())
-            print('TX:', msg)
+            v = self.volts()
+            f = self.deg_F()
+            msg = encode_msg(v, f)
+            print('TX: %.2f, %.1f, %s' % (v, f, msg))
             if err := not self.rfm95.send(msg, destination=255):
                 print('TX failed')
             time.sleep(5)
@@ -108,7 +134,11 @@ class BaseStation:
                 rssi = lora.last_rssi
                 snr = lora.last_snr
                 msg = bytes(packet)
-                print('rssi: %d, snr: %.1f, %s' % (rssi, snr, msg))
+                if len(msg) == 2:
+                    v, f = decode_msg(msg)
+                    print('rssi:%d, snr:%.1f, %.2f, %.1f' % (rssi, snr, v, f))
+                else:
+                    print('rssi:%d, snr:%.1f, %s' % (rssi, snr, msg))
 
 
 # ------------------------------------------
