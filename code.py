@@ -37,6 +37,8 @@ from adafruit_max1704x import MAX17048
 from adafruit_mcp9808 import MCP9808
 from adafruit_rfm9x import RFM9x
 
+from sb_hmac import hmac_sha1
+
 
 # ------------------------------------------------------------------------
 # Config Options for LoRa FeatherWing (see learn guide and API docs)
