@@ -76,80 +76,68 @@ def scale_to_byte(val, lo, hi):
 def scale_from_byte(b, lo, hi):
     return (b * (hi - lo) / 255) + lo
 
-def encode_msg(volt, degree_F):
+def encode_(volt, degree_F):
     v = scale_to_byte(volt, BATT_LO, BATT_HI)
     t = scale_to_byte(degree_F, TEMP_LO, TEMP_HI)
     return bytes((v, t))
 
-def decode_msg(data):
+def decode_(data):
     v = scale_from_byte(data[0], BATT_LO, BATT_HI)
     t = scale_from_byte(data[1], TEMP_LO, TEMP_HI)
     return v, t
 
+def start_tx_mode(i2c, spi, cs, rst):
+    """
+    Initialize and run in remote sensor hardware configuration (LoRa TX)
+    """
+    max17 = MAX17048(i2c)                  # battery fuel gauge
+    mcp98 = MCP9808(i2c)                   # temperature sensor
+    rfm95 = rfm9x_factory(spi, cs, rst)    # LoRa radio
+    while True:
+        v = max17.cell_voltage             # measure battery Volts
+        c = mcp98.temperature              # measure temperature (°C)
+        f = (c * 9/5) + 32                 # convert °C to °F
+        print('TX: %.2f, %.1f' % (v, f))
+        msg = encode_(v, f)                # pack measurements as bytes
+        rfm95.send(msg, destination=255)   # start transmitting packet
+        time.sleep(0.005)                  # wait for packet to finish
+        rfm95.idle()                       # put radio in low power mode
+        time.sleep(5)
 
-class Remote:
-    """Controller class for remote sensor hardware configuration (LoRa TX)"""
-
-    def __init__(self, i2c, spi, cs, rst):
-        # CAUTION: Older versions of the ESP32-S3 Feather used a different I2C
-        # fuel gauge chip. This code is for current board revision.
-        self.max17 = MAX17048(i2c)                # Built in battery fuel gauge
-        self.mcp98 = MCP9808(i2c)                 # External temperature sensor
-        self.rfm95 = rfm9x_factory(spi, cs, rst)  # LoRa FeatherWing
-
-    def run(self):
-        # Read sensors and transmit measurements
-        while True:
-            volts = self.max17.cell_voltage
-            degrees_F = (self.mcp98.temperature * 9 / 5) + 32  # convert C->F
-            print('TX: %.2f, %.1f' % (volts, degrees_F))
-            msg = encode_msg(volts, degrees_F)
-            self.rfm95.send(msg, destination=255)  # start transmitting packet
-            time.sleep(0.005)                      # wait for packet to finish
-            self.rfm95.idle()                      # enter low power mode
-            time.sleep(5)
-
-
-class BaseStation:
-    """Controller class for base station hardware configuration (LoRa RX)"""
-
-    def __init__(self, spi, cs, rst):
-        self.rfm95 = rfm9x_factory(spi, cs, rst)  # LoRa FeatherWing
-
-    def handle_packet(self, rssi, snr, msg):
-        print('RX: rssi:%d, snr:%.1f, ' % (rssi, snr), end='')
-        if len(msg) == 2:
-            volts, degrees_F = decode_msg(msg)
-            print('%.2f, %.0f' % (volts, degrees_F))
-        else:
-            print(msg)
-
-    def run(self):
-        # Receive, decode, and print measurements
-        print('Starting LoRa Receiver.')
-        lora = self.rfm95
-        while True:
-            if packet := lora.receive():
-                msg = bytes(packet)
-                self.handle_packet(lora.last_rssi, lora.last_snr, msg)
+def start_rx_mode(spi, cs, rst):
+    """
+    Initialize and run in base station hardware configuration (LoRa RX)
+    """
+    EXPECTED_SIZE = const(2)
+    rfm95 = rfm9x_factory(spi, cs, rst)        # LoRa radio
+    print('Starting LoRa Receiver.')
+    while True:
+        if data := rfm95.receive():            # get packet as bytearray
+            rssi = rfm95.last_rssi             # check signal strength
+            snr = rfm95.last_snr
+            if EXPECTED_SIZE != len(data):     # skip wrong-size packets
+                continue
+            v, f = decode_(data)               # decode Volts and °F
+            print('RX: rssi=%d, snr=%.1f, %.2f, %.0f' %
+                (rssi, snr, v, f))
 
 
-# ------------------------------------------
-# At boot: Select mode according to board_id
-# ------------------------------------------
+# -------------------------------------------
+# At boot, select mode according to board_id:
+# -------------------------------------------
 
 if board.board_id == 'adafruit_feather_esp32s3_nopsram':
-    # Remote Sensor Mode
+    # Remote Sensor (TX)
     i2c = board.STEMMA_I2C()
     spi = board.SPI()
     cs = DigitalInOut(board.D10)
     rst = DigitalInOut(board.D9)
-    Remote(i2c, spi, cs, rst).run()
+    start_tx_mode(i2c, spi, cs, rst)
 elif board.board_id == 'adafruit_feather_rp2350':
-    # Base Station Mode
+    # Base Station (RX)
     spi = board.SPI()
     cs = DigitalInOut(board.D10)
     rst = DigitalInOut(board.D9)
-    BaseStation(spi, cs, rst).run()
+    start_rx_mode(spi, cs, rst)
 else:
-    raise ValueError("Unexpected board_id. Halting. (check code.py comments)")
+    raise ValueError("Unexpected board_id. Halting. (check code.py)")
