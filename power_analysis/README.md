@@ -83,3 +83,58 @@ the average deep sleep current, bringing it down to 33 µA. That's pretty good.
 Total charge used for a wake cycle is currently 113.25 mC.
 
 ![PPK2 screenshot](max17048_hibernate/max17048_hibernate_wake_cycle.png)
+
+
+## Add Timing Markers (commit 68f1b43)
+
+This adds gray code timing markers on A0 and A1 so it's possible to see in the
+Nordic Power Profiler chart when boot.py, code.py, and the sensor's run()
+function are active.
+
+Interesting features:
+
+1. Each wake cycle takes about 1.835 seconds. Of that, about the first 1.346 s
+   is overhead that happens before boot.py starts running. The overhead section
+   of the wake cycle uses about 66.2 mC of charge. The Python code section,
+   including `boot.py` and `code.py` lasts for a total of about 489 ms and uses
+   about 49 mC of charge.
+
+2. From the start of `boot.py` to the start of `code.py` takes about 12 ms and
+   uses about 733 µC of charge. This might include compile time for `code.py`,
+   but I'm not sure about that.
+
+3. From the start of `code.py` to the start of `sensor_mode.run()` takes 99 ms
+   and uses 7.54 mC of charge. This might include compile time for
+   `sensor_mode.py`.
+
+4. From start to end of `sensor_mode.run()` takes about 371 ms and uses about
+   40.6 mC of charge. That includes the charge to transmit two LoRa packets.
+
+### Full Wake Cycle
+
+![PPK2 screenshot](add_timing_markers/add_timing_markers_wake_cycle.png)
+
+
+### Overhead Section Before boot.py
+
+![PPK2 screenshot](add_timing_markers/add_timing_markers_pre_boot_py.png)
+
+
+### Entire Code Section with boot.py and code.py
+
+![PPK2 screenshot](add_timing_markers/add_timing_markers_boot_and_code.png)
+
+
+### Start of boot.py to Start of code.py
+
+![PPK2 screenshot](add_timing_markers/add_timing_markers_boot_py.png)
+
+
+### Start of code.py to Start of sensor_mode.run()
+
+![PPK2 screenshot](add_timing_markers/add_timing_markers_code_to_sensor_run.png)
+
+
+### Start to End of sensor_mode.run()
+
+![PPK2 screenshot](add_timing_markers/add_timing_markers_sensor_run.png)
