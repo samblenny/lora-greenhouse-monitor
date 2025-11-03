@@ -41,6 +41,12 @@ def get_nvram():
 def run():
     # Initialize and run in remote sensor hardware configuration (LoRa TX)
 
+    # Mark start of run() for power analyzer's logic inputs
+    a0 = digitalio.DigitalInOut(board.A0)
+    a0.switch_to_output(value=True)
+    a1 = digitalio.DigitalInOut(board.A1)
+    a1.switch_to_output(value=False)
+
     i2c = board.STEMMA_I2C()
     spi = board.SPI()
     cs = DigitalInOut(board.D10)
@@ -49,6 +55,11 @@ def run():
     light_sleep(0.01)                     # SX127x radio needs 10ms after reset
     max17 = MAX17048(i2c)                 # battery fuel gauge
     mcp98 = MCP9808(i2c)                  # temperature sensor
+    # NOTE: It might save power to set
+    # MCP9808's resolution register to 1
+    # for reduced sample time, but
+    # `mcp98.resolution = 1` throws
+    # an OSError exception (a bug?)
     rfm95 = rfm9x_factory(spi, cs, rst)   # LoRa radio
     key = HMAC_KEY
     truncate = HMAC_TRUNC
@@ -71,6 +82,10 @@ def run():
     # Put peripherals in low power mode
     rfm95.sleep()
     max17.hibernate()
+
+    # Mark end of run() for the power analyzer's logic inputs
+    a0.value = False
+    a1.value = False
 
     # Begin deep sleep
     deep_sleep(TX_INTERVAL)

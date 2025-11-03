@@ -27,6 +27,12 @@
 # |   IRQ  |        A        |      11       |         11        |
 #
 import board
+import digitalio
+
+# Toggle A0 to mark the start of code.py for the power analyzer logic inputs
+a0 = digitalio.DigitalInOut(board.A0)
+a0.switch_to_output(value=True)
+a0.deinit()
 
 
 # Each time board resets or wakes from deep sleep, select mode from board_id:
