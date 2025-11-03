@@ -5,6 +5,7 @@
 #
 import alarm
 import board
+import digitalio
 from digitalio import DigitalInOut
 import struct
 import time
@@ -39,6 +40,7 @@ def get_nvram():
 
 def run():
     # Initialize and run in remote sensor hardware configuration (LoRa TX)
+
     i2c = board.STEMMA_I2C()
     spi = board.SPI()
     cs = DigitalInOut(board.D10)
@@ -65,5 +67,10 @@ def run():
     msg += hash_                          # append truncated MAC hash
     for _ in range(TX_RETRIES):           # start transmitting packets
         rfm95.send(msg)
-    rfm95.sleep()                         # put radio in low power mode
+
+    # Put peripherals in low power mode
+    rfm95.sleep()
+    max17.hibernate()
+
+    # Begin deep sleep
     deep_sleep(TX_INTERVAL)
