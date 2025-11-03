@@ -65,3 +65,21 @@ using `RFM9x.idle()` to `RFM9x.sleep()`. The average current drops to 41 µA,
 which is a lot better, but hopefully it can still go lower.
 
 ![PPK2 screenshot](rfm9x_sleep.png)
+
+
+## Use MAX17048.hibernate() before sleep (commit d329866)
+
+Putting the MAX17048 fuel gauge chip into hibernate mode drops another 8 µA off
+the average deep sleep current, bringing it down to 33 µA. That's pretty good.
+
+
+### Average Deep Sleep Current
+
+![PPK2 screenshot](max17048_hibernate/max17048_hibernate_deep_sleep.png)
+
+
+### Wake Cycle Total Charge
+
+Total charge used for a wake cycle is currently 113.25 mC.
+
+![PPK2 screenshot](max17048_hibernate/max17048_hibernate_wake_cycle.png)
