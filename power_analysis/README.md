@@ -56,3 +56,12 @@ Interesting features:
 ### Zoomed View of LoRa Packet TX
 
 ![PPK2 screenshot](baseline/baseline-two-lora-packets.png)
+
+
+## Switch to RFM9x.sleep() (commit c7d0e89)
+
+This is what the average deep sleep current looks like after I switched from
+using `RFM9x.idle()` to `RFM9x.sleep()`. The average current drops to 41 µA,
+which is a lot better, but hopefully it can still go lower.
+
+![PPK2 screenshot](rfm9x_sleep.png)
