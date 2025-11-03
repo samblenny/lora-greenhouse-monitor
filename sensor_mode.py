@@ -65,5 +65,5 @@ def run():
     msg += hash_                          # append truncated MAC hash
     for _ in range(TX_RETRIES):           # start transmitting packets
         rfm95.send(msg)
-    rfm95.idle()                          # put radio in low power mode
+    rfm95.sleep()                         # put radio in low power mode
     deep_sleep(TX_INTERVAL)
