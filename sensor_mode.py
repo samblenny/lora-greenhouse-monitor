@@ -6,6 +6,7 @@
 import alarm
 from board import A0, A1, A2, A3, D9, D10, SPI, STEMMA_I2C
 import digitalio
+from microcontroller import cpu
 import struct
 import sys
 import time
@@ -31,14 +32,17 @@ def run(a1, tx_interval_s=5.0):
     a2.switch_to_output(value=True)
     a3.switch_to_output(value=False)
 
+    # Reduce CPU frequency to save power during I2C and LoRa IO delays. The
+    # default frequency is 240 MHz. To avoid messing up time.monotonic(), don't
+    # attempt to set this below 80 MHz.
+    cpu.frequency = 80_000_000
+
     # Configure I2C sensors first to allow warm-up time before measurements
     i2c = STEMMA_I2C()
     mcp98 = MCP9808(i2c)             # temperature sensor
+    mcp98.resolution = 1             # 0.25°C resolution @ 65ms conversion time
+    ts = time.monotonic() + 0.067    # schedule the temperature sampling time
     max17 = MAX17048(i2c)            # battery fuel gauge
-    # -----
-    # TODO: `mcp98.resolution = 1`   # this sets sample time to 65ms
-    # -----
-    ts = time.monotonic() + 0.065    # schedule the temperature sampling time
     a3.value = True
 
     # Configure LoRa radio
@@ -79,5 +83,6 @@ def run(a1, tx_interval_s=5.0):
     a0.value, a1.value, a2.value, a3.value = False, False, False, False
 
     # Begin deep sleep
+    cpu.frequency = 240_000_000  # restore default of 240 MHz
     alarm.exit_and_deep_sleep_until_alarms(
         alarm.time.TimeAlarm(monotonic_time=time.monotonic() + tx_interval_s))
