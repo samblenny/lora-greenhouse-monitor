@@ -1,0 +1,17 @@
+GPIO
+Bits  Segment        Duration     Charge
+----  ------------   ----------   -------------
+0001  boot.py
+0011  code.py         11.42  ms       716.37 µC
+0111  run()          127.3   ms     9.70     mC  # import sensor_mode
+1111  I2C init         7.760 ms       728.25 µC
+1101  LoRa init       19.63  ms     1.18     mC
+1001  light sleep     39.71  ms     1.95     mC
+0001  read sensors     2.90  ms       138.61 µC
+0011  HMAC             2.80  ms       159.21 µC
+0111  packet 1       155.6   ms    18.98     mC  # TX
+1111  packet 2       154.7   ms    18.93     mC  # TX
+0000  to-sleep        10.96  ms       513.77 µC
+----  ------------   ----------   -------------
+      Code Total     538.6   ms    53.14     mC
+      Wake Cycle   1.890     s    119.88     mC

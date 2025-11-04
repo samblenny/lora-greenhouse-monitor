@@ -138,3 +138,58 @@ Interesting features:
 ### Start to End of sensor_mode.run()
 
 ![PPK2 screenshot](add_timing_markers/add_timing_markers_sensor_run.png)
+
+
+## Refactor 4 GPIO (commit b7bee97)
+
+This time I added two more GPIO outputs to make it easier to examine each
+major segment of code between `boot.py`, `code.py`, and `sensor_mode.py`.
+
+This table summarizes my notes from Nordic Power Profiler:
+
+```
+GPIO
+Bits  Segment        Duration     Charge
+----  ------------   ----------   -------------
+0001  boot.py
+0011  code.py         11.42  ms       716.37 µC
+0111  run()          127.3   ms     9.70     mC  # import sensor_mode
+1111  I2C init         7.760 ms       728.25 µC
+1101  LoRa init       19.63  ms     1.18     mC
+1001  light sleep     39.71  ms     1.95     mC
+0001  read sensors     2.90  ms       138.61 µC
+0011  HMAC             2.80  ms       159.21 µC
+0111  packet 1       155.6   ms    18.98     mC  # TX
+1111  packet 2       154.7   ms    18.93     mC  # TX
+0000  to-sleep        10.96  ms       513.77 µC
+----  ------------   ----------   -------------
+      Code Total     538.6   ms    53.14     mC
+      Wake Cycle   1.890     s    119.88     mC
+```
+
+Interesting Features:
+
+1. The 3 main time and charge intensive tasks are importing `sensor_mode.py`,
+   transmitting the first packet, and transmitting the second packet.
+
+2. The light sleep waiting for the temperature sensor sampling period to end
+   takes about 2 mC, which is not that much compared to the compile and
+   transmit Coulombs.
+
+3. By far the majority of wake cycle Coulombs are spent on booting the VM
+   before `boot.py` runs.
+
+
+### Full Wake Cycle (1.890 s, 119.88 mC)
+
+![PPK2 screenshot](refactor_4_gpio/refactor_4_gpio_wake_cycle.png)
+
+
+### Import sensor_mode.py (127.3 ms, 9.70 mC)
+
+![PPK2 screenshot](refactor_4_gpio/refactor_4_gpio_import_sensor_mode.png)
+
+
+### Light Sleep (39.71 ms, 1.95 mC)
+
+![PPK2 screenshot](refactor_4_gpio/refactor_4_gpio_light_sleep.png)
