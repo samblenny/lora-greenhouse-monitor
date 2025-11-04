@@ -193,3 +193,12 @@ Interesting Features:
 ### Light Sleep (39.71 ms, 1.95 mC)
 
 ![PPK2 screenshot](refactor_4_gpio/refactor_4_gpio_light_sleep.png)
+
+
+## Frequency 80 MHz (commit c09c6f3)
+
+This reduces `microcontroller.cpu.frequency` from the default of 240 MHz down
+to 80 MHz during `sensor_mode.run()`. The result is about +10ms increase in
+code runtime with about -9 mC reduction in total charge used by the wake cycle.
+
+![PPK2 screenshot](frequency_80_MHz.png)
