@@ -11,13 +11,6 @@ from adafruit_rfm9x import RFM9x
 # -------------------------------------------------------------------------
 # Config Options
 
-# LoRa Radio Config (see learn guide and API docs)
-BAUD        = const(5000000)   # SPI baudrate (default 10MHz)
-LORA_BAND   = const(915)       # LoRa band (915 MHz for US)
-TX_POW      = const(8)         # LoRa TX power (range 5..23 dB, default 13)
-SF          = const(9)         # Spreading factor (range 6..12, default 7)
-PREAMBLE    = const(10)        # Preamble (range uint16, default 8)
-
 # Sensor Float Range Limits (for encoding LoRa messages)
 BATT_LO = const(3.2)
 BATT_HI = const(4.2)
@@ -38,12 +31,12 @@ if trunc := os.getenv("HMAC_TRUNC"):
 
 def rfm9x_factory(spi, cs, rst):
     # Configure an RFM9x object for the 900 MHz RFM95W LoRa FeatherWing.
-    r = RFM9x(spi, cs, rst, LORA_BAND, baudrate=BAUD, agc=False, crc=False)
-    r.tx_power = TX_POW
-    r.spreading_factor = SF
-    r.preamble_length = PREAMBLE
-    r.destination = 255             # send to all stations (nodes)
-    r.node = 255                    # receive from all stations (nodes)
+    r = RFM9x(spi, cs, rst, 915.0, baudrate=10_000_000, agc=False, crc=False)
+    r.tx_power = 8           # range 5..23 dB, default: 13
+    r.spreading_factor = 9   # default: 7
+    r.preamble_length = 10   # range uint16, default: 8
+    r.destination = 255      # send to all stations (nodes)
+    r.node = 255             # receive from all stations (nodes)
     return r
 
 def scale_to_byte(val, lo, hi):

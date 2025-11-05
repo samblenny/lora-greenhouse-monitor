@@ -4,7 +4,8 @@
 # LoRa Sensor
 #
 import alarm
-from board import A0, A1, A2, A3, D9, D10, SPI, STEMMA_I2C
+from board import A0, A1, A2, A3, D9, D10, SCL, SDA, SPI
+import busio
 import digitalio
 from microcontroller import cpu
 import struct
@@ -38,11 +39,11 @@ def run(a1, tx_interval_s=5.0):
     cpu.frequency = 80_000_000
 
     # Configure I2C sensors first to allow warm-up time before measurements
-    i2c = STEMMA_I2C()
-    mcp98 = MCP9808(i2c)             # temperature sensor
-    mcp98.resolution = 1             # 0.25°C resolution @ 65ms conversion time
-    ts = time.monotonic() + 0.067    # schedule the temperature sampling time
-    max17 = MAX17048(i2c)            # battery fuel gauge
+    i2c = busio.I2C(SCL, SDA, frequency=400_000)  # Use fast 400kHz bus clock
+    mcp98 = MCP9808(i2c)           # temperature sensor
+    mcp98.resolution = 1           # 0.25°C resolution @ 65ms conversion time
+    ts = time.monotonic() + 0.067  # schedule the temperature sampling time
+    max17 = MAX17048(i2c)          # battery fuel gauge
     a3.value = True
 
     # Configure LoRa radio
