@@ -202,3 +202,11 @@ to 80 MHz during `sensor_mode.run()`. The result is about +10ms increase in
 code runtime with about -9 mC reduction in total charge used by the wake cycle.
 
 ![PPK2 screenshot](frequency_80_MHz.png)
+
+
+## Faster I2C and SPI Clocks (commit a42841b)
+
+This shaves about 2.5 mC off each wake cycle by running the I2C and SPI bus
+clocks a bit faster than what I had them set for previously.
+
+![PPK2 screenshot](faster_i2c_spi_clocks.png)
