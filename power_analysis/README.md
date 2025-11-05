@@ -210,3 +210,25 @@ This shaves about 2.5 mC off each wake cycle by running the I2C and SPI bus
 clocks a bit faster than what I had them set for previously.
 
 ![PPK2 screenshot](faster_i2c_spi_clocks.png)
+
+
+## LoRa TX Power 11 dB and Spreading Factor 8 (commit 6ed2bba)
+
+Previously, I was using TX power 8 dB and spreading factor 9. This reduces the
+spreading factor to 8 which should halve the on-air time and reduce receiver
+sensitivity by about 3 dB (according to some chart I saw in The Things Network
+LoRaWAN docs). To make up for the reduction in receiver sensitivity, I upped
+the transmit power by a corresponding 3 dB to 11 dB (old level was 8 dB).
+
+This change reduces the wake cycle time by about 131 ms and reduces the wake
+cycle charge by about 10 mC (wake time 1.755 s, wake charge: 98.55 mC)
+
+
+### Full Wake Cycle
+
+![PPK2 screenshot](tx_11dB_8sf/tx_11dB_8sf_wake_cycle.png)
+
+
+### Transmitting One Packet
+
+![PPK2 screenshot](tx_11dB_8sf/tx_11dB_8sf_one_packet.png)
