@@ -280,3 +280,23 @@ actual use, the deep sleep period will be a little under 20 minutes.
 ![PPK2 screenshot](tune_clocks_again/tune_clocks_again_deep_sleep_2.png)
 
 ![PPK2 screenshot](tune_clocks_again/tune_clocks_again_deep_sleep_3.png)
+
+
+## Node Address & Stepped Transmit Power (commit 1807814)
+
+This adds node address awareness and transmit interval jitter to the sensor and
+base station firmware to prepare the system to work with multiple sensors. I
+also added a transmit power step (10 dB then 16 dB) to help with range testing.
+
+There's only a small increase in wake cycle time and charge used (+17ms and
++1.5 mC for total of 1.693 s, 91.77 mC).
+
+
+### Full Wake Cycle, 91.77 mC
+
+![PPK2 screenshot](node_addr_stepped_tx_power/node_addr_stepped_tx_power_wake_cycle.png)
+
+
+### Deep Sleep 21.99µA Average Current over 18 s
+
+![PPK2 screenshot](node_addr_stepped_tx_power/node_addr_stepped_tx_power_18s_sleep_avg_22uA.png)
