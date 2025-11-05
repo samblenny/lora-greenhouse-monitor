@@ -3,7 +3,7 @@
 #
 # LoRa Base Station
 #
-import board
+from board import D9, D10, SPI
 from digitalio import DigitalInOut
 import time
 
@@ -13,38 +13,37 @@ from sb_hmac import hmac_sha1
 
 def run():
     # Initialize and run in base station hardware configuration (LoRa RX)
-    spi = board.SPI()
-    cs = DigitalInOut(board.D10)
-    rst = DigitalInOut(board.D9)
 
-    print('Starting LoRa Receiver.')
-    time.sleep(0.01)                      # SX127x radio needs 10ms after reset
-    rfm95 = rfm9x_factory(spi, cs, rst)   # LoRa radio
+    # LoRa radio module
+    cs, rst = DigitalInOut(D10), DigitalInOut(D9)
+    rfm95 = rfm9x_factory(SPI(), cs, rst)
+    rfm95.node = 255                      # receive from all stations (nodes)
 
-    EXPECTED_SIZE = 6 + HMAC_TRUNC        # byte-size of message + MAC
-    truncate = HMAC_TRUNC
-    key = HMAC_KEY
-    prev_seq = None                       # first sequence num can be anything
+    EXPECTED_SIZE = 4 + 6 + HMAC_TRUNC    # size of header + message + MAC
+    seq_list = {}
     while True:
-        if data := rfm95.receive():           # get packet as bytearray
-            rssi = rfm95.last_rssi            # check signal strength
-            snr = rfm95.last_snr
-            if EXPECTED_SIZE != len(data):    # skip wrong-size packets
+        if data := rfm95.receive(with_header=True):  # bytearry: header+packet
+            rssi = rfm95.last_rssi                   # signal strength
+            snr = rfm95.last_snr                     # signal to noise ratio
+            if EXPECTED_SIZE != len(data):           # skip wrong-size packets
                 continue
-            # Decode and print the payload. Payload should contain
-            # a message with the sequence number, volts, °F, then a
-            # truncated HMAC of the message
-            msg = data[:-truncate]
-            msg_hash = data[-truncate:]
-            seq, v, f = decode_(msg)
-            check_hash = hmac_sha1(key, msg)[:truncate]
-            # Check for monotonic sequence number and valid HMAC
-            # CAUTION: first sequence number after boot will always be accepted
-            non_monotonic = (prev_seq is not None) and (seq <= prev_seq)
-            if non_monotonic or (msg_hash != check_hash):
+            # Re-assemble message including the node address byte from header.
+            # Message format: node address, sequence number, volts, °F.
+            msg = data[1:2] + data[4:-HMAC_TRUNC]
+            msg_hash = data[-HMAC_TRUNC:]
+            node, seq, v, f = decode_(msg)
+            # Verify HMAC of message (configure nodes to share the same key)
+            if msg_hash != hmac_sha1(HMAC_KEY, msg)[:HMAC_TRUNC]:
                 continue
+            # Check for monotonic sequence number (per node)
+            # CAUTION: After boot, this accepts the first sequence number it
+            # sees for each node address (values don't persist across reset)
+            check = "SEQ_FAIL"
+            prev_seq = seq_list.get(node)
+            if (prev_seq is None) or (prev_seq < seq):
+                check = "SEQ_PASS"
+                seq_list[node] = seq
             # Making it here means packet is in sequence and authenticated.
             # Print decoded packet then update sequence number.
-            print('RX:  rssi=%d, snr=%.1f, %08x, %.2f, %.0f, %s' %
-                (rssi, snr, seq, v, f, msg_hash.hex()))
-            prev_seq = seq
+            print('RX: rssi=%d, snr=%.1f, %d, %08x, %.2f, %.0f, %s' %
+                (rssi, snr, node, seq, v, f, check))
