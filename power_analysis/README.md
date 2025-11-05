@@ -252,3 +252,31 @@ cycle charge by about 8 mC (wake time 1.676 s, wake charge: 90.30 mC)
 ### Transmitting One Packet
 
 ![PPK2 screenshot](tx_14dB_7sf/tx_14dB_7sf_one_packet.png)
+
+
+## Tune Clocks Again (commit 64fe119)
+
+This time I reduced the I2C and SPI clocks a bit to 250 kHz I2C and 5 MHz SPI.
+It seems like the combination of clock rates has some effect on the total deep
+sleep charge between wake cycles. But, that all seems to be concentrated in a
+short tail right when the wake cycle ends. If I ignore the tail, the deep sleep
+current seems pretty consistent near an average of 21.9 µA.
+
+
+### Wake Cycle
+
+![PPK2 screenshot](tune_clocks_again/tune_clocks_again_wake_cycle.png)
+
+
+### Deep Sleeps Examples (average 21.9 µA)
+
+Note how I start the selection a little after the end of the wake cycle to skip
+the inconsistent tail current. Including the tail runs the average deep sleep
+current up to the range of 23-30 µA, but that average is over 5 seconds. In
+actual use, the deep sleep period will be a little under 20 minutes.
+
+![PPK2 screenshot](tune_clocks_again/tune_clocks_again_deep_sleep_1.png)
+
+![PPK2 screenshot](tune_clocks_again/tune_clocks_again_deep_sleep_2.png)
+
+![PPK2 screenshot](tune_clocks_again/tune_clocks_again_deep_sleep_3.png)
