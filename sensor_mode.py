@@ -39,7 +39,7 @@ def run(a1, tx_interval_s=5.0):
     cpu.frequency = 80_000_000
 
     # Configure I2C sensors first to allow warm-up time before measurements
-    i2c = busio.I2C(SCL, SDA, frequency=400_000)  # Use fast 400kHz bus clock
+    i2c = busio.I2C(SCL, SDA, frequency=250_000)  # Use fast bus clock
     mcp98 = MCP9808(i2c)           # temperature sensor
     mcp98.resolution = 1           # 0.25°C resolution @ 65ms conversion time
     ts = time.monotonic() + 0.067  # schedule the temperature sampling time
@@ -79,11 +79,11 @@ def run(a1, tx_interval_s=5.0):
     # Put peripherals in low power mode
     rfm95.sleep()
     max17.hibernate()
+    i2c.deinit()
 
     # Mark end of run() for the power analyzer's logic inputs
     a0.value, a1.value, a2.value, a3.value = False, False, False, False
 
     # Begin deep sleep
-    cpu.frequency = 240_000_000  # restore default of 240 MHz
     alarm.exit_and_deep_sleep_until_alarms(
         alarm.time.TimeAlarm(monotonic_time=time.monotonic() + tx_interval_s))
