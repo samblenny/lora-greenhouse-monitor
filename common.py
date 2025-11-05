@@ -32,8 +32,8 @@ if trunc := os.getenv("HMAC_TRUNC"):
 def rfm9x_factory(spi, cs, rst):
     # Configure an RFM9x object for the 900 MHz RFM95W LoRa FeatherWing.
     r = RFM9x(spi, cs, rst, 915.0, baudrate=10_000_000, agc=False, crc=False)
-    r.tx_power = 8           # range 5..23 dB, default: 13
-    r.spreading_factor = 9   # default: 7
+    r.tx_power = 11          # range 5..23 dB, default: 13
+    r.spreading_factor = 8   # default: 7
     r.preamble_length = 10   # range uint16, default: 8
     r.destination = 255      # send to all stations (nodes)
     r.node = 255             # receive from all stations (nodes)
