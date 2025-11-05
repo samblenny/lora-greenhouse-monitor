@@ -232,3 +232,23 @@ cycle charge by about 10 mC (wake time 1.755 s, wake charge: 98.55 mC)
 ### Transmitting One Packet
 
 ![PPK2 screenshot](tx_11dB_8sf/tx_11dB_8sf_one_packet.png)
+
+
+## LoRa TX Power 14 dB and Spreading Factor 7 (commit 39fc3ec)
+
+This is like the last one, but again I reduced spreading factor by 1 and
+increased transmit power by 3 dB. The new settings are TX power 14 dB and
+spreading factor 7.
+
+This change reduces the wake cycle time by about 90 ms and reduces the wake
+cycle charge by about 8 mC (wake time 1.676 s, wake charge: 90.30 mC)
+
+
+### Full Wake Cycle
+
+![PPK2 screenshot](tx_14dB_7sf/tx_14dB_7sf_wake_cycle.png)
+
+
+### Transmitting One Packet
+
+![PPK2 screenshot](tx_14dB_7sf/tx_14dB_7sf_one_packet.png)
