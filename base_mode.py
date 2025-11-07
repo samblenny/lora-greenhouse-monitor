@@ -38,10 +38,10 @@ def run():
             # Check for monotonic sequence number (per node)
             # CAUTION: After boot, this accepts the first sequence number it
             # sees for each node address (values don't persist across reset)
-            check = "SEQ_FAIL"
+            check = "SEQ_ERR"
             prev_seq = seq_list.get(node)
             if (prev_seq is None) or (prev_seq < seq):
-                check = "SEQ_PASS"
+                check = "SEQ_OK"
                 seq_list[node] = seq
             # Making it here means packet is in sequence and authenticated.
             # Print decoded packet then update sequence number.
