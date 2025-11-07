@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: MIT
 # SPDX-FileCopyrightText: Copyright 2025 Sam Blenny
 #
+# See NOTES.md for related documentation
+#
 from micropython import const
 import os
 import struct

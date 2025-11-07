@@ -1,5 +1,15 @@
 # Notes
 
+
+## Base Station Notes
+
+Related Products and Learn Guides:
+- https://www.adafruit.com/product/292 (i2c/SPI character LCD backpack)
+- https://learn.adafruit.com/i2c-spi-lcd-backpack
+
+
+## Sensor Notes
+
 Related Learn Guides:
 - https://learn.adafruit.com/radio-featherwing (LoRa FeatherWing)
 - https://learn.adafruit.com/adafruit-mcp9808-precision-i2c-temperature-sensor-guide

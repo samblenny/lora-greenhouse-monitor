@@ -3,9 +3,14 @@
 #
 # LoRa Base Station
 #
-from board import D9, D10, SPI
+# See NOTES.md for related documentation
+#
+from board import D9, D10, SCL, SDA, SPI
+import busio
 from digitalio import DigitalInOut
 import time
+
+from adafruit_character_lcd.character_lcd_i2c import Character_LCD_I2C
 
 from common import HMAC_TRUNC, HMAC_KEY, decode_, rfm9x_factory
 from sb_hmac import hmac_sha1
@@ -18,6 +23,14 @@ def run():
     cs, rst = DigitalInOut(D10), DigitalInOut(D9)
     rfm95 = rfm9x_factory(SPI(), cs, rst)
     rfm95.node = 255                      # receive from all stations (nodes)
+
+    # Character LCD
+    i2c = busio.I2C(SCL, SDA, frequency=250_000)  # default bus clock is slow
+    cols, rows = 16, 2
+    lcd = Character_LCD_I2C(i2c, cols, rows)
+    lcd.clear()
+    lcd.backlight = True
+    lcd.message = 'Ready'
 
     EXPECTED_SIZE = 4 + 6 + HMAC_TRUNC    # size of header + message + MAC
     seq_list = {}
@@ -47,3 +60,6 @@ def run():
             # Print decoded packet then update sequence number.
             print('RX: rssi=%d, snr=%.1f, %d, %08x, %.2f, %.0f, %s' %
                 (rssi, snr, node, seq, v, f, check))
+            lcd.clear()
+            lcd.message = 'rssi %d snr %.1f\n%d: %.2fV %.0fF' % (
+                rssi, snr, node, v, f)

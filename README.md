@@ -4,9 +4,11 @@
 
 **DRAFT: WORK IN PROGRESS**
 
-![lora thermometer](lora-thermometer.jpeg)
+![lora thermometer base station](img/lora-thermometer-base-station.jpeg)
 
-![lora thermometer logic probes](lora-thermometer-logic-probes.jpeg)
+![lora thermometer sensor](img/lora-thermometer.jpeg)
+
+![lora thermometer logic probes](img/lora-thermometer-logic-probes.jpeg)
 
 
 ## Power Analysis
