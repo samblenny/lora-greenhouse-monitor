@@ -320,3 +320,24 @@ code was reporting invalid temperature measurements until I added more delay.
 ### Deep Sleep Current (22.32 µA)
 
 ![PPK2 screenshot](brownout_recovery_delay/brownout_recovery_delay_deep_sleep_current.png)
+
+
+## More Power for Range Test (commit 06039b7)
+
+This uses a range testing configuration with a stronger ramp of transmit
+power steps compared to the previous configuration.
+
+When I tried a range test for from the greenhouse (500m NLOS) with spreading
+factor 7, none of the tx power 10dB packets made it. I received a few 16dB
+packets while the transmitter was outside the greenhouse, but I got nothing
+from the actual install location inside the greenhouse.
+
+This configuration increases spreading factor from 7 to 8 which should increase
+the effective signal strength by 3dB at the cost of extending the transmit time.
+The tx power ramp is now three steps of 17dB, 20dB, and 23dB.
+
+These changes increase the wake cycle time to 2.050 seconds, using 125.22 mC of
+charge from the battery.
+
+![PPK2 screenshot](more_power_8sf_17-20-23dB.png)
+
