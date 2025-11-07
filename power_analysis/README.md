@@ -300,3 +300,23 @@ There's only a small increase in wake cycle time and charge used (+17ms and
 ### Deep Sleep 21.99µA Average Current over 18 s
 
 ![PPK2 screenshot](node_addr_stepped_tx_power/node_addr_stepped_tx_power_18s_sleep_avg_22uA.png)
+
+
+## Brownout Recovery Delay (commit e184714)
+
+This adds some logic to make sure that I2C initializations don't happen too
+quickly after boot or wake from deep sleep. The point is to let the I2C bus
+recover from what appears to be a brownout. A current spike happens when the
+CircuitPython supervisor switches on I2C_POWER before running boot.py and
+code.py. On USB power, it doesn't matter. But, on a 400 mAh LiPo cell, my old
+code was reporting invalid temperature measurements until I added more delay.
+
+
+### Full Wake Cycle (1.867 ms, 96.64 mC)
+
+![PPK2 screenshot](brownout_recovery_delay/brownout_recovery_delay_wake_cycle.png)
+
+
+### Deep Sleep Current (22.32 µA)
+
+![PPK2 screenshot](brownout_recovery_delay/brownout_recovery_delay_deep_sleep_current.png)
