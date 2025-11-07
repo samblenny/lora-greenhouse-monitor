@@ -21,10 +21,11 @@ from common import HMAC_KEY, HMAC_TRUNC, LORA_NODE, encode_, rfm9x_factory
 from sb_hmac import hmac_sha1
 
 
-TARGET_INTERVAL = const(10.0)    # approximate seconds between transmits
+TARGET_INTERVAL = const(20.0)    # approximate seconds between transmits
 WAKE_SECONDS    = const(1.963)   # wake runtime as measured by power profiler
 BROWNOUT_DELAY  = const(0.300)   # time to wait for I2C bus brownout to clear
 SENSOR_DELAY    = const(0.067)   # time to wait for I2C sensors to initialize
+LOW_VOLTS       = const(3.650)   # threshold to begin power conservation
 
 def run(a1, t0):
     # Initialize and run in remote sensor hardware configuration (LoRa TX)
@@ -73,26 +74,37 @@ def run(a1, t0):
     msg = encode_(LORA_NODE, tstamp, v, f)        # pack everything into bytes
     msg += hmac_sha1(HMAC_KEY, msg)[:HMAC_TRUNC]  # append truncated HMAC
 
-    # Send packet on LoRa radio with one repeat for better reliability. This
-    # uses two different power levels for range testing. Note that the node
-    # address is included in the message for the HMAC, but the node byte gets
-    # sent as part of the header rather than in the payload.
-    print('%d, %08x, %.2f, %.1f' % (LORA_NODE, tstamp, v, f))
-    a1.value = not a1.value
-    rfm95.tx_power = 10               # tx power range is 5..23 dB, default 13
-    rfm95.send(msg[1:], node=msg[0])
-    a1.value = not a1.value
-    rfm95.tx_power = 16               # +6 dB for the second one
-    rfm95.send(msg[1:], node=msg[0])
-    a1.value = not a1.value
+    if v < LOW_VOLTS:
+        # For low volts, skip transmit to avoid damaging LiPo cell
+        pass
+    else:
+        # Send packet on LoRa radio with a ramp of power levels for range
+        # testing. Note that the node address is included in the message for
+        # the HMAC, but the node byte gets sent as part of the header rather
+        # than in the payload.
+        print('%d, %08x, %.2f, %.1f' % (LORA_NODE, tstamp, v, f))
+        for tx_pow in [17, 20, 23]:    # tx power range is 5..23 dB, default 13
+            a1.value = not a1.value
+            rfm95.tx_power = tx_pow
+            rfm95.send(msg[1:], node=msg[0])
+        a1.value = not a1.value
 
     # Prepare peripherals and pins for low power
     rfm95.sleep()
     max17.hibernate()
     a0.value, a1.value = False, False
 
+    # Calculate target sleep interval
+    if v < LOW_VOLTS:
+        # For low volts, sleep longer. This sleeps for hours (rather than days)
+        # with the intent of possibly recovering from temporary voltage sag
+        # during very cold temperatures.
+        t1 = 3600 * 3
+    else:
+        # Otherwise, use the normal interval
+        t1 = TARGET_INTERVAL - WAKE_SECONDS
+
     # Begin deep sleep with ±2% random jitter added to target sleep interval
-    t1 = TARGET_INTERVAL - WAKE_SECONDS
     t2 = t1 + (t1 * 0.02 * os.urandom(1)[0] / 255)
     alarm.exit_and_deep_sleep_until_alarms(
         alarm.time.TimeAlarm(monotonic_time=time.monotonic() + t2))

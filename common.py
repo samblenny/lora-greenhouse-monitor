@@ -36,7 +36,7 @@ def rfm9x_factory(spi, cs, rst):
     # Configure an RFM9x object for the 900 MHz RFM95W LoRa FeatherWing.
     r = RFM9x(spi, cs, rst, 915.0, baudrate=5_000_000, agc=False, crc=False)
     r.tx_power = 8           # range 5..23 dB, default: 13
-    r.spreading_factor = 7   # default: 7
+    r.spreading_factor = 8   # default: 7
     r.preamble_length = 10   # range uint16, default: 8
     return r
 
