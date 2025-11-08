@@ -19,16 +19,15 @@ BATT_HI = const(4.4)
 TEMP_LO = const(-128)
 TEMP_HI = const(127)
 
+HMAC_TRUNC = const(4)    # size in bytes of truncated hash (similar to HOTP)
+
 # Defaults for optional settings.toml variables
 HMAC_KEY = b'Please set your own HMAC_KEY in settings.toml'
-HMAC_TRUNC = 4    # size in bytes of truncated hash (similar to HOTP)
 LORA_NODE = 0     # LoRa node address (range 0..254)
 
 # Read settings.toml
 if key := os.getenv("HMAC_KEY"):
     HMAC_KEY = key
-if trunc := os.getenv("HMAC_TRUNC"):
-    HMAC_TRUNC = trunc
 if lora_node := os.getenv("LORA_NODE"):
     LORA_NODE = int(lora_node) & 0xff
 # -------------------------------------------------------------------------

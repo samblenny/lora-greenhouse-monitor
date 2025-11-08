@@ -27,6 +27,7 @@ BROWNOUT_DELAY  = const(0.300)   # time to wait for I2C bus brownout to clear
 SENSOR_DELAY    = const(0.067)   # time to wait for I2C sensors to initialize
 LOW_VOLTS       = const(3.650)   # threshold to begin power conservation
 
+
 def run(a1, t0):
     # Initialize and run in remote sensor hardware configuration (LoRa TX)
 
@@ -38,7 +39,8 @@ def run(a1, t0):
     # Reduce CPU frequency to save power during I2C and LoRa IO delays. The
     # default frequency is 240 MHz. To avoid messing up time.monotonic(), don't
     # attempt to set this below 80 MHz.
-    cpu.frequency = 80_000_000
+    if cpu.frequency == 240_000_000:
+        cpu.frequency = 80_000_000
 
     # Configure LoRa radio while we wait for I2C power to settle
     cs, rst = DigitalInOut(D10), DigitalInOut(D9)
@@ -55,8 +57,15 @@ def run(a1, t0):
 
     # Configure I2C sensors
     i2c = busio.I2C(SCL, SDA, frequency=250_000)  # default bus clock is slow
-    mcp98 = MCP9808(i2c)      # temperature sensor
-    mcp98.resolution = 1      # 0.25°C, 65ms conversion time
+    try:
+        mcp98 = MCP9808(i2c)      # temperature sensor
+        mcp98.resolution = 1      # 0.25°C, 65ms conversion time
+    except ValueError:
+        # MCP9808() raises ValueError if it doesn't find sensor on I2C bus.
+        # If that happens, carry on and report bad temperature values to the
+        # base station. The point of this is to avoid the firmware draining
+        # the battery if there's a hardware issue on the I2C bus.
+        mcp98 = None
     max17 = MAX17048(i2c)     # battery fuel gauge
     a1.value = not a1.value
 
@@ -70,7 +79,12 @@ def run(a1, t0):
     # Check sensors then build packet with message (node address, timestamp,
     # volts, temperature) + truncated HMAC of message (modeled on TOTP)
     v = max17.cell_voltage                        # lipo cell volts
-    f = (mcp98.temperature * 9/5) + 32            # °C -> °F
+    max17.hibernate()                             # put it in low power mode
+    if mcp98:
+        f = (mcp98.temperature * 9/5) + 32        # °C -> °F
+    else:
+        # If sensor unplugged, send error value
+        f = -127
     msg = encode_(LORA_NODE, tstamp, v, f)        # pack everything into bytes
     msg += hmac_sha1(HMAC_KEY, msg)[:HMAC_TRUNC]  # append truncated HMAC
 
@@ -91,7 +105,6 @@ def run(a1, t0):
 
     # Prepare peripherals and pins for low power
     rfm95.sleep()
-    max17.hibernate()
     a0.value, a1.value = False, False
 
     # Calculate target sleep interval

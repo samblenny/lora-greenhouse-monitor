@@ -6,6 +6,7 @@
 Related Products and Learn Guides:
 - https://www.adafruit.com/product/292 (i2c/SPI character LCD backpack)
 - https://learn.adafruit.com/i2c-spi-lcd-backpack
+- https://docs.circuitpython.org/projects/charlcd/en/latest/api.html
 
 
 ## Sensor Notes
