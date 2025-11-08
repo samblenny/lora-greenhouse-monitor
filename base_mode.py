@@ -33,6 +33,36 @@ if (backlight := os.getenv("LCD_BACKLIGHT")) is not None:
     LCD_BACKLIGHT = bool(backlight)
 # ---------------------------------------------------------------------------
 
+
+class SensorReports:
+    # This tracks reports from multiple sensors to format them for a 2x16 LCD
+    def __init__(self):
+        self.lora_nodes = {}
+
+    def new_report(self, lora_node, volts, degree_f):
+        self.lora_nodes[lora_node] = (time.monotonic(), volts, degree_f)
+
+    def __str__(self):
+        # Format a two line status string for display on the 2x16 LCD
+        now = time.monotonic()
+        lines = []
+        for node in sorted(self.lora_nodes)[:2]:
+            (timestamp, volts, degree_f) = self.lora_nodes[node]
+            # Use timestamp to generate a short relative freshness tag
+            minutes = round(max(0, now - timestamp)) // 60
+            hours = minutes // 3600   # 60*60=3600 seconds/hour
+            days = minutes // 86400   # 60*60*24=86400 seconds/day
+            if days > 0:
+                tag = '%dd' % round(days)
+            elif hours > 0:
+                tag = '%dh' % round(hours)
+            else:
+                tag = '%dm' % round(minutes)
+            # Format a line for most recent report from this lora_node
+            lines.append('%d %.1fV %s %.0fF' % (node, volts, tag, degree_f))
+        return "\n".join(lines)
+
+
 def run():
     # Initialize and run in base station hardware configuration (LoRa RX)
     print("=========================")
@@ -59,6 +89,7 @@ def run():
         if LCD_BACKLIGHT:
             lcd.backlight = True
         lcd.message = 'Ready'
+        reports = SensorReports()
     except ValueError:
         # Character_LCD_I2C() raises ValueError if it doesn't find an LCD.
         # If that happens, just ignore it and carry on. You can rely on this
@@ -68,7 +99,8 @@ def run():
     EXPECTED_SIZE = 4 + 6 + HMAC_TRUNC    # size of header + message + MAC
     seq_list = {}
     while True:
-        if data := rfm95.receive(with_header=True):  # bytearry: header+packet
+        # receive() returns None for timeout or a bytearry of header+packet
+        if data := rfm95.receive(with_header=True, timeout=60):
             rssi = rfm95.last_rssi                   # signal strength
             snr = rfm95.last_snr                     # signal to noise ratio
             if EXPECTED_SIZE != len(data):           # skip wrong-size packets
@@ -94,5 +126,10 @@ def run():
             print('RX: %d, %.1f, %d, %08x, %.2f, %.0f, %s' %
                 (rssi, snr, node, seq, v, f, check))
             if lcd:
+                reports.new_report(node, v, f)
                 lcd.clear()
-                lcd.message = '%ddB\n%d: %.2fV %.0fF' % (rssi, node, v, f)
+                lcd.message = str(reports)
+        else:
+            # In case of receive timeout, just update report age tags on LCD
+            if lcd:
+                lcd.message = str(reports)

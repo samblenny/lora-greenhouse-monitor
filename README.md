@@ -4,7 +4,7 @@
 
 **DRAFT: WORK IN PROGRESS**
 
-![lora thermometer base station](img/lora-thermometer-base-station.jpeg)
+![lora thermometer base station and sensor](img/lora-thermometer-base-and-sensor.jpeg)
 
 ![lora thermometer sensor](img/lora-thermometer.jpeg)
 
