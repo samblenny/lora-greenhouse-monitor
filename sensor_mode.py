@@ -21,7 +21,7 @@ from common import HMAC_KEY, HMAC_TRUNC, LORA_NODE, encode_, rfm9x_factory
 from sb_hmac import hmac_sha1
 
 
-TARGET_INTERVAL = const(20.0)    # approximate seconds between transmits
+TARGET_INTERVAL = const(180.0)    # approximate seconds between transmits
 WAKE_SECONDS    = const(1.963)   # wake runtime as measured by power profiler
 BROWNOUT_DELAY  = const(0.300)   # time to wait for I2C bus brownout to clear
 SENSOR_DELAY    = const(0.067)   # time to wait for I2C sensors to initialize

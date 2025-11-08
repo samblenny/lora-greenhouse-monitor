@@ -37,27 +37,33 @@ if (backlight := os.getenv("LCD_BACKLIGHT")) is not None:
 class SensorReports:
     # This tracks reports from multiple sensors to format them for a 2x16 LCD
     def __init__(self):
+        self.ready_timestamp = time.monotonic()
         self.lora_nodes = {}
 
     def new_report(self, lora_node, volts, degree_f):
         self.lora_nodes[lora_node] = (time.monotonic(), volts, degree_f)
 
+    def freshness_tag(self, seconds):
+        minutes = round(max(0, seconds)) // 60
+        hours = minutes // 3600   # 60*60=3600 seconds/hour
+        days = minutes // 86400   # 60*60*24=86400 seconds/day
+        if days > 0:
+            return '%dd' % days
+        elif hours > 0:
+            return '%dh' % hours
+        else:
+            return '%dm' % minutes
+
     def __str__(self):
         # Format a two line status string for display on the 2x16 LCD
         now = time.monotonic()
         lines = []
+        if len(self.lora_nodes) == 0:
+            tag = self.freshness_tag(now - self.ready_timestamp)
+            lines.append('Ready %s' % tag)
         for node in sorted(self.lora_nodes)[:2]:
             (timestamp, volts, degree_f) = self.lora_nodes[node]
-            # Use timestamp to generate a short relative freshness tag
-            minutes = round(max(0, now - timestamp)) // 60
-            hours = minutes // 3600   # 60*60=3600 seconds/hour
-            days = minutes // 86400   # 60*60*24=86400 seconds/day
-            if days > 0:
-                tag = '%dd' % round(days)
-            elif hours > 0:
-                tag = '%dh' % round(hours)
-            else:
-                tag = '%dm' % round(minutes)
+            tag = self.freshness_tag(now - timestamp)
             # Format a line for most recent report from this lora_node
             lines.append('%d %.1fV %s %.0fF' % (node, volts, tag, degree_f))
         return "\n".join(lines)
@@ -88,7 +94,7 @@ def run():
         lcd.clear()
         if LCD_BACKLIGHT:
             lcd.backlight = True
-        lcd.message = 'Ready'
+        lcd.message = 'Ready 0m'
         reports = SensorReports()
     except ValueError:
         # Character_LCD_I2C() raises ValueError if it doesn't find an LCD.
@@ -126,7 +132,8 @@ def run():
             print('RX: %d, %.1f, %d, %08x, %.2f, %.0f, %s' %
                 (rssi, snr, node, seq, v, f, check))
             if lcd:
-                reports.new_report(node, v, f)
+                if check == "OK":      # Don't update LCD for replay packets
+                    reports.new_report(node, v, f)
                 lcd.clear()
                 lcd.message = str(reports)
         else:
