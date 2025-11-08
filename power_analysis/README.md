@@ -312,7 +312,7 @@ code.py. On USB power, it doesn't matter. But, on a 400 mAh LiPo cell, my old
 code was reporting invalid temperature measurements until I added more delay.
 
 
-### Full Wake Cycle (1.867 ms, 96.64 mC)
+### Full Wake Cycle (1.867 s, 96.64 mC)
 
 ![PPK2 screenshot](brownout_recovery_delay/brownout_recovery_delay_wake_cycle.png)
 
@@ -341,3 +341,39 @@ charge from the battery.
 
 ![PPK2 screenshot](more_power_8sf_17-20-23dB.png)
 
+
+## Range Test Ramp 2 (commit 036715d)
+
+This is to prepare for my second range test. The transmit power level ramp is
+the same as for the last commit, but I added exception handling and some
+configuration settings to make the testing process more practical. I also
+wanted to get some good Power Profiler screenshots with the logic inputs
+hooked up since I didn't bother to do that last time.
+
+
+### Deep Sleep Average Current 22 µA
+
+![PPK2 screenshot](range_test_ramp_2/range_test_ramp_2_deep_sleep_22uA.png)
+
+
+### Full Wake Cycle (2.054s, 124.89 mC)
+
+Here you can see a long period on the left for the VM to boot, some time for
+boot.py and code.py, a longer time for importing sensor_mode.py, and then on
+the right, sensor_mode.py running. The average current drops dramatically when
+`sensor_mode.run()` drops the cpu frequency. The three square wave pulses on
+the right are the ramp of three different RFM95 tx_power values.
+
+![PPK2 screenshot](range_test_ramp_2/range_test_ramp_2_wake_cycle_2.054s_124.89mC.png)
+
+
+### Timing Markers During boot.py and code.py
+
+You can compare the PPK2 logic port inputs ("0" and "1" at the bottom of the
+screenshot) to places in
+[boot.py](https://github.com/samblenny/lora-greenhouse-monitor/blob/036715db85b2e35603bd6a9cf21e46d9ba98db2b/boot.py),
+[code.py](https://github.com/samblenny/lora-greenhouse-monitor/blob/036715db85b2e35603bd6a9cf21e46d9ba98db2b/code.py),
+and [sensor_mode.py](https://github.com/samblenny/lora-greenhouse-monitor/blob/036715db85b2e35603bd6a9cf21e46d9ba98db2b/sensor_mode.py)
+from commit 036715d where `a0.value` or `a1.value` are changed.
+
+![PPK2 screenshot](range_test_ramp_2/range_test_ramp_2_code_timing_markers.png)
