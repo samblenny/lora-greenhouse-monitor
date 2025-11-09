@@ -7,6 +7,7 @@
 #
 from board import D9, D10, SCL, SDA, SPI
 import busio
+from collections import namedtuple
 from digitalio import DigitalInOut
 from microcontroller import cpu
 import os
@@ -33,6 +34,9 @@ if (backlight := os.getenv("LCD_BACKLIGHT")) is not None:
     LCD_BACKLIGHT = bool(backlight)
 # ---------------------------------------------------------------------------
 
+Report = namedtuple("Report", ["timestamp", "volts", "degree_f"])
+
+Node = namedtuple("Node", ["reports", "min_f", "max_f"])
 
 class SensorReports:
     # This tracks reports from multiple sensors to format them for a 2x16 LCD
@@ -41,7 +45,33 @@ class SensorReports:
         self.lora_nodes = {}
 
     def new_report(self, lora_node, volts, degree_f):
-        self.lora_nodes[lora_node] = (time.monotonic(), volts, degree_f)
+        now = time.monotonic()
+        new_report = Report(now, volts, degree_f)
+        nodes = self.lora_nodes
+        if lora_node not in nodes:
+            # First report for this node, so initialize a new reports list
+            nodes[lora_node] = Node([new_report], degree_f, degree_f)
+        else:
+            # Not first report, so add new report at end of existing list
+            reports = nodes[lora_node].reports
+            reports.append(new_report)
+            # Prune reports older than 1 day from front of list
+            s_per_day = 86400
+            for _ in range(len(reports)-1):
+                (t, v, f) = reports[0]
+                if t + s_per_day < now:
+                    reports.pop(0)
+                else:
+                    break
+            # Re-calculate 24 hour min/max temperature stats
+            min_f = max_f = degree_f
+            for (t, v, f) in reports:
+                if f < min_f:
+                    min_f = f
+                if f > max_f:
+                    max_f = f
+            # Save the updated reports list with stats
+            nodes[lora_node] = Node(reports, min_f, max_f)
 
     def freshness_tag(self, seconds):
         minutes = round(max(0, seconds)) // 60
@@ -57,16 +87,18 @@ class SensorReports:
     def __str__(self):
         # Format a two line status string for display on the 2x16 LCD
         now = time.monotonic()
-        lines = []
         if len(self.lora_nodes) == 0:
             tag = self.freshness_tag(now - self.ready_timestamp)
-            lines.append('Ready %s' % tag)
-        for node in sorted(self.lora_nodes)[:2]:
-            (timestamp, volts, degree_f) = self.lora_nodes[node]
-            tag = self.freshness_tag(now - timestamp)
-            # Format a line for most recent report from this lora_node
-            lines.append('%d %.1fV %s %.0fF' % (node, volts, tag, degree_f))
-        return "\n".join(lines)
+            return 'Ready %s' % tag
+        # Display current report and min/max temperature stats for the lowest
+        # numbered lora node (because more won't fit on the 2x16 LCD)
+        node_key = sorted(self.lora_nodes)[0]
+        n = self.lora_nodes[node_key]
+        r = n.reports[-1]  # newest report is at end of list
+        tag = self.freshness_tag(now - r.timestamp)
+        # Format 2-line message for LCD
+        return '%d %.1fV %s %.0fF\n %.0fF %.0fF' % (
+            node_key, r.volts, tag, r.degree_f, n.min_f, n.max_f)
 
 
 def run():

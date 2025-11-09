@@ -6,7 +6,10 @@
 Related Products and Learn Guides:
 - https://www.adafruit.com/product/292 (i2c/SPI character LCD backpack)
 - https://learn.adafruit.com/i2c-spi-lcd-backpack
+
+Related API Docs:
 - https://docs.circuitpython.org/projects/charlcd/en/latest/api.html
+https://docs.python.org/3/library/collections.html#namedtuple-factory-function-for-tuples-with-named-fields
 
 
 ## Sensor Notes
