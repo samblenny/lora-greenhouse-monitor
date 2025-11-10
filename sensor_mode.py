@@ -21,7 +21,7 @@ from common import HMAC_KEY, HMAC_TRUNC, LORA_NODE, encode_, rfm9x_factory
 from sb_hmac import hmac_sha1
 
 
-TARGET_INTERVAL = const(180.0)    # approximate seconds between transmits
+TARGET_INTERVAL = const(180.0)   # approximate seconds between transmits
 WAKE_SECONDS    = const(1.963)   # wake runtime as measured by power profiler
 BROWNOUT_DELAY  = const(0.300)   # time to wait for I2C bus brownout to clear
 SENSOR_DELAY    = const(0.067)   # time to wait for I2C sensors to initialize
@@ -92,15 +92,17 @@ def run(a1, t0):
         # For low volts, skip transmit to avoid damaging LiPo cell
         pass
     else:
-        # Send packet on LoRa radio with a ramp of power levels for range
-        # testing. Note that the node address is included in the message for
-        # the HMAC, but the node byte gets sent as part of the header rather
-        # than in the payload.
+        # Send packet on LoRa radio with configurable repeats for better
+        # reliability. You can modify the array of power levels to experiment
+        # with tx power vs. range. Note that the node address is included in
+        # the message for the HMAC, but that address byte gets sent as part of
+        # the header rather than in the payload.
         print('%d, %08x, %.2f, %.1f' % (LORA_NODE, tstamp, v, f))
-        for tx_pow in [17, 20, 23]:    # tx power range is 5..23 dB, default 13
+        for tx_pow in [23, 23]:    # tx power range is 5..23 dB, default 13
             a1.value = not a1.value
             rfm95.tx_power = tx_pow
             rfm95.send(msg[1:], node=msg[0])
+            time.sleep(0.005)
         a1.value = not a1.value
 
     # Prepare peripherals and pins for low power

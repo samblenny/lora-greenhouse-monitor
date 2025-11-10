@@ -36,9 +36,10 @@ if lora_node := os.getenv("LORA_NODE"):
 def rfm9x_factory(spi, cs, rst):
     # Configure an RFM9x object for the 900 MHz RFM95W LoRa FeatherWing.
     r = RFM9x(spi, cs, rst, 915.0, baudrate=5_000_000, agc=False, crc=False)
-    r.tx_power = 8           # range 5..23 dB, default: 13
-    r.spreading_factor = 8   # default: 7
-    r.preamble_length = 10   # range uint16, default: 8
+    r.tx_power = 13          # range 5..23 dB, default: 13
+    r.spreading_factor = 10  # default: 7
+    r.preamble_length = 16   # range uint16, default: 8
+    r.coding_rate = 8
     return r
 
 def scale_to_byte(val, lo, hi):
