@@ -356,7 +356,7 @@ hooked up since I didn't bother to do that last time.
 ![PPK2 screenshot](range_test_ramp_2/range_test_ramp_2_deep_sleep_22uA.png)
 
 
-### Full Wake Cycle (2.054s, 124.89 mC)
+### Full Wake Cycle (2.054 s, 124.89 mC)
 
 Here you can see a long period on the left for the VM to boot, some time for
 boot.py and code.py, a longer time for importing sensor_mode.py, and then on
@@ -377,3 +377,28 @@ and [sensor_mode.py](https://github.com/samblenny/lora-greenhouse-monitor/blob/0
 from commit 036715d where `a0.value` or `a1.value` are changed.
 
 ![PPK2 screenshot](range_test_ramp_2/range_test_ramp_2_code_timing_markers.png)
+
+
+## Tune for Range (commit d7f0842)
+
+After some field testing including a significant temperature change, it turned
+out the previous LoRa tuning was too weak. This tune ups the spreading factor
+from 8 to 10, the preamble length from 10 to 16, and the coding rate from 5 to
+8. Instead of the previous range testing tx power ramp of 17, 20, and 23 dB,
+this tune uses two 23 dB packets with a 5 ms delay between them.
+
+As a result of all that, the charge per wake cycle goes up significantly from
+124.89 mC for the old radio tune to 221.55 mC for the new tune. By my math,
+with a 400 mAh LiPo and a transmit interval of 20 minutes, the current tune
+should last for about 2 months before the battery gets down to 20% remaining
+charge.
+
+
+### Deep Sleep Average Current 22 µA
+
+![PPK2 screenshot](tune_for_range/tune_for_range_sleep_current_21.55uA.png)
+
+
+### Full Wake Cycle (2.667 s, 221.55 mC)
+
+![PPK2 screenshot](tune_for_range/tune_for_range_wake_cycle_2.667s_221.55mC.png)
