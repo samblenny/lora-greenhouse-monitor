@@ -33,6 +33,21 @@ LCD_BACKLIGHT = True
 if (backlight := os.getenv("LCD_BACKLIGHT")) is not None:
     LCD_BACKLIGHT = bool(backlight)
 # ---------------------------------------------------------------------------
+# Repeater Mode
+#
+# To enable repeater mode, put `LORA_REPEATER = 1` in settings.toml.
+#
+# This helps with placing an LCD base station in a place with good visibility
+# for watching the display but with a poor line of sight to the sensor(s). By
+# putting the repeater node in location with better line of sight, you can
+# extend the range of the sensor.
+#
+# CAUTION: This uses the RFM9x header's FLAGS field to serve as a hop count.
+#
+LORA_REPEATER = False
+if (repeater := os.getenv("LORA_REPEATER")) is not None:
+    LORA_REPEATER = bool(repeater)
+# ---------------------------------------------------------------------------
 
 Report = namedtuple("Report", ["timestamp", "volts", "degree_f"])
 
@@ -75,8 +90,8 @@ class SensorReports:
 
     def freshness_tag(self, seconds):
         minutes = round(max(0, seconds)) // 60
-        hours = minutes // 3600   # 60*60=3600 seconds/hour
-        days = minutes // 86400   # 60*60*24=86400 seconds/day
+        hours = seconds // 3600   # 60*60=3600 seconds/hour
+        days = seconds // 86400   # 60*60*24=86400 seconds/day
         if days > 0:
             return '%dd' % days
         elif hours > 0:
@@ -99,7 +114,6 @@ class SensorReports:
         # Format 2-line message for LCD
         return '%d %.1fV %s %.0fF\n %.0fF %.0fF' % (
             node_key, r.volts, tag, r.degree_f, n.min_f, n.max_f)
-
 
 def run():
     # Initialize and run in base station hardware configuration (LoRa RX)
@@ -136,9 +150,10 @@ def run():
 
     EXPECTED_SIZE = 4 + 6 + HMAC_TRUNC    # size of header + message + MAC
     seq_list = {}
+    rx = rfm95.receive
     while True:
-        # receive() returns None for timeout or a bytearry of header+packet
-        if data := rfm95.receive(with_header=True, timeout=60):
+        # rx=receive() returns None for timeout or a bytearry of header+packet
+        if data := rx(with_header=True, keep_listening=True, timeout=60):
             rssi = rfm95.last_rssi                   # signal strength
             snr = rfm95.last_snr                     # signal to noise ratio
             if EXPECTED_SIZE != len(data):           # skip wrong-size packets
@@ -154,20 +169,31 @@ def run():
             # Check for monotonic sequence number (per node)
             # CAUTION: After boot, this accepts the first sequence number it
             # sees for each node address (values don't persist across reset)
-            check = "DUP"
+            seq_check = False
             prev_seq = seq_list.get(node)
             if (prev_seq is None) or (prev_seq < seq):
-                check = "OK"
+                seq_check = True
                 seq_list[node] = seq
             # Making it here means packet is in sequence and authenticated.
             # Print decoded packet then update sequence number.
+            check_tag = "OK" if seq_check else "DUP"
             print('RX: %d, %.1f, %d, %08x, %.2f, %.0f, %s' %
-                (rssi, snr, node, seq, v, f, check))
+                (rssi, snr, node, seq, v, f, check_tag))
             if lcd:
-                if check == "OK":      # Don't update LCD for replay packets
+                if seq_check:         # Don't update LCD for replay packets
                     reports.new_report(node, v, f)
                 lcd.clear()
                 lcd.message = str(reports)
+            # If repeater mode is enabled and the 4 low bits of the flags field
+            # are less than the hop counter limit, repeat the packet with an
+            # incremented hop count.
+            to, from_, hops = data[0], data[1], data[3] & 0xf
+            max_hops = 1
+            if LORA_REPEATER and seq_check and hops < max_hops:
+                new_hop = min(16, hops+1)
+                rfm95.tx_power = 13  # tx power range is 5..23 dB, default 13
+                rfm95.send(data[4:], node=from_, destination=to, flags=new_hop)
+
         else:
             # In case of receive timeout, just update report age tags on LCD
             if lcd:
