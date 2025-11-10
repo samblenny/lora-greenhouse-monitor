@@ -6,10 +6,16 @@
 Related Products and Learn Guides:
 - https://www.adafruit.com/product/292 (i2c/SPI character LCD backpack)
 - https://learn.adafruit.com/i2c-spi-lcd-backpack
+- https://learn.adafruit.com/esp-now-in-circuitpython/overview
+- https://www.adafruit.com/product/1651 (2.8" TFT Touch Shield v2)
+- https://learn.adafruit.com/adafruit-2-8-tft-touch-shield-v2
+- https://learn.adafruit.com/circuitpython-display-text-library/types-of-labels
+
 
 Related API Docs:
 - https://docs.circuitpython.org/projects/charlcd/en/latest/api.html
 https://docs.python.org/3/library/collections.html#namedtuple-factory-function-for-tuples-with-named-fields
+- https://docs.circuitpython.org/en/latest/shared-bindings/espnow/
 
 
 ## Sensor Notes
