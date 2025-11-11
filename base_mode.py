@@ -357,14 +357,7 @@ def run():
                 new_hop = min(16, hops+1)
                 enow_msg = bytearray([to, from_, id_, new_hop]) + payload
                 try:
-                    wifi.radio.enabled = True
-                    wifi.radio.start_ap(" ", "", channel=6, max_connections=0)
-                    wifi.radio.stop_ap()
                     espnow_obj.send(enow_msg, peer)
-                    time.sleep(0.1)
-                    # Turn wifi back off in the possibly fruitless attempt to
-                    # decrease noise floor for the LoRa radio
-                    wifi.radio.enabled = False
                 except Exception as e:
                     print('E', e)  # Log the error and keep going
 
