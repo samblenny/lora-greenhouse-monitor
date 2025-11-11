@@ -34,6 +34,18 @@ LCD_BACKLIGHT = True
 if (backlight := os.getenv("LCD_BACKLIGHT")) is not None:
     LCD_BACKLIGHT = bool(backlight)
 # ---------------------------------------------------------------------------
+# RSSI and SNR Display
+#
+# To enable RSSI display mode, put `RSSI_SNR_DISPLAY = 1` in settings.toml.
+#
+# This will show LoRa RSSI and SNR on the second line of the sensor report
+# display (instead of min/max temperature). You can use it for checking
+# signal strength at different receiver locations.
+#
+RSSI_SNR_DISPLAY = False
+if (rssisnr := os.getenv("RSSI_SNR_DISPLAY")) is not None:
+    RSSI_SNR_DISPLAY = bool(rssisnr)
+# ---------------------------------------------------------------------------
 # Repeater Mode
 #
 # To enable repeater mode, put `LORA_REPEATER = 1` in settings.toml.
@@ -76,8 +88,12 @@ class SensorReports:
     def __init__(self):
         self.ready_timestamp = time.monotonic()
         self.lora_nodes = {}
+        self.rssi = 0
+        self.snr = 0
 
-    def new_report(self, lora_node, volts, degree_f):
+    def new_report(self, lora_node, volts, degree_f, rssi, snr):
+        self.rssi = rssi
+        self.snr = snr
         now = time.monotonic()
         new_report = Report(now, volts, degree_f)
         nodes = self.lora_nodes
@@ -130,8 +146,14 @@ class SensorReports:
         r = n.reports[-1]  # newest report is at end of list
         tag = self.freshness_tag(now - r.timestamp)
         # Format 2-line message for LCD
-        return '%d %.1fV %s %.0fF\n %.0fF %.0fF' % (
-            node_key, r.volts, tag, r.degree_f, n.min_f, n.max_f)
+        if RSSI_SNR_DISPLAY:
+            # second line has RSSI and SNR
+            return '%d %.1fV %s %.0fF\n r%d s%.1f' % (
+                node_key, r.volts, tag, r.degree_f, self.rssi, self.snr)
+        else:
+            # second line has min/max temperature
+            return '%d %.1fV %s %.0fF\n %.0fF %.0fF' % (
+                node_key, r.volts, tag, r.degree_f, n.min_f, n.max_f)
 
 
 def run():
@@ -145,6 +167,8 @@ def run():
         modes.append(' + ESP-NOW Gateway')
     if ESPNOW_DISPLAY:
         modes.append(' + ESP-NOW Display')
+    if RSSI_SNR_DISPLAY:
+        modes.append(' + RSSI SNR Display')
     modes.append(' ===')
     banner = ''.join(modes)
     hr = '=' * len(banner)
@@ -306,7 +330,7 @@ def run():
                 continue
 
             # Update the reports data structure (for min/max temperature, etc)
-            reports.new_report(node, v, f)
+            reports.new_report(node, v, f, rssi, snr)
 
             # If there's a character LCD available, show report message
             if lcd:
@@ -329,7 +353,8 @@ def run():
                 new_hop = min(16, hops+1)
                 rfm95.tx_power = 13  # tx power range is 5..23 dB, default 13
                 rfm95.send(payload, node=from_, destination=to, flags=new_hop)
-            if ESPNOW_GATEWAY and seq_check:
+            if ESPNOW_GATEWAY and seq_check and hops < max_hops:
+                new_hop = min(16, hops+1)
                 enow_msg = bytearray([to, from_, id_, new_hop]) + payload
                 try:
                     wifi.radio.enabled = True
