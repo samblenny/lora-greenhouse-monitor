@@ -6,7 +6,7 @@
 # See NOTES.md for related documentation
 #
 import board
-from board import D9, D10, SCL, SDA, SPI
+from board import SCL, SDA, SPI
 import busio
 from collections import namedtuple
 from digitalio import DigitalInOut
@@ -219,22 +219,26 @@ def run():
     else:
         # Try to initialize LoRa module
         try:
-            cs, rst = DigitalInOut(D10), DigitalInOut(D9)
+            cs, rst = DigitalInOut(board.D10), DigitalInOut(board.D9)
             rfm95 = rfm9x_factory(SPI(), cs, rst)
             rfm95.node = 255               # receive from all stations (nodes)
         except Exception as e:
             print('B', e)  # Log the error and keep going
 
     # Try to initialize an I2C Character LCD
-    i2c = busio.I2C(SCL, SDA, frequency=250_000)  # default bus clock is slow
     lcd = None
     try:
+        i2c = busio.I2C(SCL, SDA, frequency=250_000)  # default clock is slow
         cols, rows = 16, 2
         lcd = Character_LCD_I2C(i2c, cols, rows)
         lcd.clear()
         if LCD_BACKLIGHT:
             lcd.backlight = True
         lcd.message = 'Ready 0m'
+    except RuntimeError as e:
+        # This can happen on QT Py if you don't have pullups connected:
+        # - RuntimeError: No pull up found on SDA or SCL; check your wiring
+        pass
     except ValueError as e:
         # This happens if no I2C LCD backpack is present at 0x20
         pass
