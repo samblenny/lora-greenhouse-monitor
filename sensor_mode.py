@@ -21,11 +21,11 @@ from common import HMAC_KEY, HMAC_TRUNC, LORA_NODE, encode_, rfm9x_factory
 from sb_hmac import hmac_sha1
 
 
-TARGET_INTERVAL = const(180.0)   # approximate seconds between transmits
+TARGET_INTERVAL = const(540.0)   # approximate seconds between transmits
 WAKE_SECONDS    = const(1.963)   # wake runtime as measured by power profiler
 BROWNOUT_DELAY  = const(0.300)   # time to wait for I2C bus brownout to clear
 SENSOR_DELAY    = const(0.067)   # time to wait for I2C sensors to initialize
-LOW_VOLTS       = const(3.650)   # threshold to begin power conservation
+LOW_VOLTS       = const(3.450)   # threshold to begin power conservation
 
 
 def run(a1, t0):
@@ -111,10 +111,9 @@ def run(a1, t0):
 
     # Calculate target sleep interval
     if v < LOW_VOLTS:
-        # For low volts, sleep longer. This sleeps for hours (rather than days)
-        # with the intent of possibly recovering from temporary voltage sag
-        # during very cold temperatures.
-        t1 = 3600 * 3
+        # For low volts, sleep longer. This is speculatively intended to
+        # possibly recover from temporary voltage sag due to extreme cold.
+        t1 = 3600
     else:
         # Otherwise, use the normal interval
         t1 = TARGET_INTERVAL - WAKE_SECONDS
